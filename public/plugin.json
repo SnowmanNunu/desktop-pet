@@ -1,0 +1,18 @@
+{
+  "main": "index.html",
+  "logo": "logo.png",
+  "preload": "preload.js",
+  "features": [
+    {
+      "code": "husky",
+      "explain": "桌面哈士奇 - 会走会闹的桌面宠物",
+      "icon": "logo.svg",
+      "cmds": [
+        "哈士奇",
+        "husky",
+        "桌面宠物",
+        "宠物"
+      ]
+    }
+  ]
+}
