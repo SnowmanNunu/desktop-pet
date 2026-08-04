@@ -15,6 +15,8 @@ ipcRenderer.on(IPC.cursorPosition, (_event, info: CursorInfo) => {
 })
 
 const petApi = {
+  /** 主动拉取当前配置（避免主进程启动时推送的竞态丢失） */
+  getConfig: (): Promise<PetConfig> => ipcRenderer.invoke(IPC.getPetConfig),
   /** 移动宠物窗口到屏幕坐标 */
   setPosition: (x: number, y: number): void => {
     ipcRenderer.send(IPC.movePetWindow, { x, y })

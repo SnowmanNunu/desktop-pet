@@ -100,6 +100,20 @@ async function init (): Promise<void> {
   resize()
   window.addEventListener('resize', resize)
 
+  // 先注册配置监听，再主动拉取初始配置
+  // （主进程在 ready-to-show 时推送的配置可能早于页面 JS 注册监听而丢失）
+  window.petApi.onConfig((newConfig) => {
+    config = { ...config, ...newConfig }
+    machine.updateConfig(config)
+  })
+  try {
+    const initialConfig = await window.petApi.getConfig()
+    config = { ...config, ...initialConfig }
+    machine.updateConfig(config)
+  } catch (err) {
+    console.warn('[pet] 拉取初始配置失败，使用默认值', err)
+  }
+
   await player.load()
 
   // 初始位置：屏幕右下角
@@ -115,11 +129,6 @@ async function init (): Promise<void> {
         ? 'sit'
         : 'idle'
   )
-
-  window.petApi.onConfig((newConfig) => {
-    config = { ...config, ...newConfig }
-    machine.updateConfig(config)
-  })
 
   window.petApi.onReminder(({ title, sticky }) => {
     reminder = { title, sticky }
