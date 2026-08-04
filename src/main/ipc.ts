@@ -1,9 +1,12 @@
-import { ipcMain } from 'electron'
+import { app, ipcMain, shell } from 'electron'
 import type { PetConfig, Reminder } from '../shared/types'
 import { IPC } from '../shared/ipc-channels'
 import { getConfig, updateConfig } from './config-store'
 import type { ReminderStore } from './reminders/store'
+import { checkForUpdates } from './updates'
 import {
+  applyClickThrough,
+  applyPetScale,
   createPetWindow,
   getPanelWindow,
   getPetWindow,
@@ -18,6 +21,12 @@ export function registerIpc (reminderStore: ReminderStore): void {
 
   ipcMain.handle(IPC.updatePetConfig, (_event, patch: Partial<PetConfig>) => {
     const config = updateConfig(patch)
+
+    // 需要主进程即时生效的副作用
+    if (patch.petScale !== undefined) applyPetScale(config.petScale)
+    if (patch.clickThrough !== undefined) applyClickThrough(config.clickThrough)
+    if (patch.autoStart !== undefined) applyAutoStart(config.autoStart)
+
     getPetWindow()?.webContents.send(IPC.petConfig, config)
     return config
   })
@@ -48,7 +57,7 @@ export function registerIpc (reminderStore: ReminderStore): void {
   ipcMain.handle(
     IPC.addReminder,
     (_event, reminder: Omit<Reminder, 'id'> & { id?: string }) => {
-      const id = reminder.id ?? `r_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      const id = reminder.id ?? newReminderId()
       // interval 类型以创建时间为锚点，首次触发在创建 N 分钟后
       const anchored =
         reminder.type === 'interval' && !reminder.lastFiredAt
@@ -73,8 +82,43 @@ export function registerIpc (reminderStore: ReminderStore): void {
     return list
   })
 
+  // ---- 稍后提醒（snooze）：生成一条 transient 一次性任务 ----
+  ipcMain.handle(IPC.snoozeReminder, (_event, title: string, minutes = 10) => {
+    const datetime = new Date(Date.now() + minutes * 60 * 1000).toISOString()
+    return reminderStore.add({
+      id: newReminderId(),
+      title,
+      type: 'once',
+      datetime,
+      enabled: true,
+      lastFiredAt: null,
+      transient: true
+    })
+  })
+
+  // ---- 检查更新 / 打开链接 ----
+  ipcMain.handle(IPC.checkUpdates, () => checkForUpdates())
+
+  ipcMain.handle(IPC.openExternal, (_event, url: string) => {
+    if (/^https?:\/\//.test(url)) shell.openExternal(url)
+  })
+
   // 任务变化时同步给面板（面板可能打开着）
   reminderStore.onChange((reminders) => {
     getPanelWindow()?.webContents.send(IPC.remindersChanged, reminders)
   })
+}
+
+/** 应用开机自启设置（macOS / Windows 生效；dev 模式无权限，直接跳过） */
+export function applyAutoStart (enabled: boolean): void {
+  if (!app.isPackaged) return
+  try {
+    app.setLoginItemSettings({ openAtLogin: enabled })
+  } catch (err) {
+    console.error('[autostart] 设置失败', err)
+  }
+}
+
+function newReminderId (): string {
+  return `r_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }

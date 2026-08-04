@@ -20,15 +20,17 @@ export default function ReminderList ({
   onToggle,
   onDelete
 }: Props): React.JSX.Element | null {
-  if (reminders.length === 0) return null
+  // transient 为内部任务（稍后提醒等），不在列表显示
+  const visible = reminders.filter((r) => !r.transient)
+  if (visible.length === 0) return null
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
       <Typography variant="subtitle2" gutterBottom>
-        提醒列表（{reminders.length}）
+        提醒列表（{visible.length}）
       </Typography>
       <List dense disablePadding>
-        {reminders.map((reminder) => (
+        {visible.map((reminder) => (
           <ListItem
             key={reminder.id}
             disableGutters
@@ -61,6 +63,7 @@ export default function ReminderList ({
               <Typography variant="caption" color="text.secondary">
                 {reminderTypeLabel(reminder)}
                 {reminderTimeLabel(reminder) ? ` · ${reminderTimeLabel(reminder)}` : ''}
+                {reminder.sticky ? ' · 重要' : ''}
               </Typography>
             </Stack>
           </ListItem>

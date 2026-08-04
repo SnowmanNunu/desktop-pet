@@ -1,3 +1,5 @@
+import type { ScreenBounds } from '../../shared/types'
+
 /** 位移与边界计算（闲逛 / 跟随鼠标共用） */
 
 export interface Vec2 {
@@ -5,13 +7,26 @@ export interface Vec2 {
   y: number
 }
 
-/** 限制窗口左上角在可用屏幕区域内 */
-export function clampToScreen (x: number, y: number, size: number): Vec2 {
-  const maxX = Math.max(0, window.screen.availWidth - size)
-  const maxY = Math.max(0, window.screen.availHeight - size)
+/** 当前窗口所在屏幕的可用区域（bounds 缺失时的兜底） */
+export function fallbackBounds (): ScreenBounds {
   return {
-    x: Math.max(0, Math.min(maxX, x)),
-    y: Math.max(0, Math.min(maxY, y))
+    x: 0,
+    y: 0,
+    width: window.screen.availWidth,
+    height: window.screen.availHeight
+  }
+}
+
+/** 限制窗口左上角在指定屏幕区域内 */
+export function clampToBounds (
+  x: number,
+  y: number,
+  size: number,
+  bounds: ScreenBounds
+): Vec2 {
+  return {
+    x: Math.max(bounds.x, Math.min(bounds.x + bounds.width - size, x)),
+    y: Math.max(bounds.y, Math.min(bounds.y + bounds.height - size, y))
   }
 }
 
@@ -34,10 +49,10 @@ export function stepToward (
   }
 }
 
-/** 屏幕内随机目标点 */
-export function randomTarget (size: number): Vec2 {
+/** 屏幕区域内随机目标点 */
+export function randomTarget (size: number, bounds: ScreenBounds): Vec2 {
   return {
-    x: Math.random() * Math.max(0, window.screen.availWidth - size),
-    y: Math.random() * Math.max(0, window.screen.availHeight - size)
+    x: bounds.x + Math.random() * Math.max(0, bounds.width - size),
+    y: bounds.y + Math.random() * Math.max(0, bounds.height - size)
   }
 }

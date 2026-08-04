@@ -1,5 +1,5 @@
 /**
- * Canvas 气泡绘制：提醒气泡（白色圆角矩形 + 小尾巴）与简短反应文字
+ * Canvas 气泡绘制：提醒气泡（标题 + 稍后/知道了按钮）、反应文字、睡眠 Zzz
  */
 
 const PADDING_X = 10
@@ -7,6 +7,23 @@ const PADDING_Y = 6
 const LINE_HEIGHT = 16
 const MAX_WIDTH = 180
 const TAIL = 6
+const BTN_HEIGHT = 20
+const BTN_GAP = 6
+const BTN_RADIUS = 6
+
+export interface Rect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export interface BubbleLayout {
+  bubble: Rect
+  snooze: Rect
+  dismiss: Rect
+  lines: string[]
+}
 
 function roundRectPath (
   ctx: CanvasRenderingContext2D,
@@ -45,46 +62,90 @@ function wrapText (
   return lines
 }
 
-/** 在宠物头顶绘制提醒气泡，返回气泡占用高度 */
-export function drawBubble (
+export function pointInRect (px: number, py: number, rect: Rect): boolean {
+  return px >= rect.x && px <= rect.x + rect.w && py >= rect.y && py <= rect.y + rect.h
+}
+
+/** 计算提醒气泡布局（绘制与点击命中共用同一布局，保证一致） */
+export function reminderBubbleLayout (
   ctx: CanvasRenderingContext2D,
   text: string,
   boxSize: number
-): void {
+): BubbleLayout {
   ctx.save()
   ctx.font = '13px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif'
-
   const lines = wrapText(ctx, text, MAX_WIDTH - PADDING_X * 2).slice(0, 4)
   const textWidth = Math.max(...lines.map((l) => ctx.measureText(l).width))
-  const w = Math.min(textWidth + PADDING_X * 2, MAX_WIDTH)
-  const h = lines.length * LINE_HEIGHT + PADDING_Y * 2
+  ctx.restore()
+
+  const w = Math.min(Math.max(textWidth + PADDING_X * 2, 150), MAX_WIDTH)
+  const textH = lines.length * LINE_HEIGHT
+  const h = PADDING_Y * 2 + textH + BTN_GAP + BTN_HEIGHT
   const x = Math.max(2, Math.min((boxSize - w) / 2, boxSize - w - 2))
   const y = 4
+
+  const btnW = (w - PADDING_X * 2 - BTN_GAP) / 2
+  const btnY = y + PADDING_Y + textH + BTN_GAP
+  return {
+    bubble: { x, y, w, h },
+    snooze: { x: x + PADDING_X, y: btnY, w: btnW, h: BTN_HEIGHT },
+    dismiss: { x: x + PADDING_X + btnW + BTN_GAP, y: btnY, w: btnW, h: BTN_HEIGHT },
+    lines
+  }
+}
+
+/** 绘制提醒气泡（标题 + [10分钟后再提] [知道了]） */
+export function drawReminderBubble (
+  ctx: CanvasRenderingContext2D,
+  layout: BubbleLayout,
+  boxSize: number
+): void {
+  const { bubble, snooze, dismiss, lines } = layout
+  ctx.save()
 
   // 气泡体
   ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)'
   ctx.lineWidth = 1
-  roundRectPath(ctx, x, y, w, h, 8)
+  roundRectPath(ctx, bubble.x, bubble.y, bubble.w, bubble.h, 8)
   ctx.fill()
   ctx.stroke()
 
   // 小尾巴
   const tailX = boxSize / 2
   ctx.beginPath()
-  ctx.moveTo(tailX - TAIL, y + h - 1)
-  ctx.lineTo(tailX, y + h + TAIL)
-  ctx.lineTo(tailX + TAIL, y + h - 1)
+  ctx.moveTo(tailX - TAIL, bubble.y + bubble.h - 1)
+  ctx.lineTo(tailX, bubble.y + bubble.h + TAIL)
+  ctx.lineTo(tailX + TAIL, bubble.y + bubble.h - 1)
   ctx.closePath()
   ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
   ctx.fill()
 
-  // 文字
+  // 标题文字
+  ctx.font = '13px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif'
   ctx.fillStyle = '#222'
   ctx.textBaseline = 'top'
   lines.forEach((line, i) => {
-    ctx.fillText(line, x + PADDING_X, y + PADDING_Y + i * LINE_HEIGHT)
+    ctx.fillText(line, bubble.x + PADDING_X, bubble.y + PADDING_Y + i * LINE_HEIGHT)
   })
+
+  // 按钮
+  ctx.font = '11px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.06)'
+  roundRectPath(ctx, snooze.x, snooze.y, snooze.w, snooze.h, BTN_RADIUS)
+  ctx.fill()
+  ctx.fillStyle = '#555'
+  ctx.fillText('10分钟后再提', snooze.x + snooze.w / 2, snooze.y + snooze.h / 2)
+
+  ctx.fillStyle = '#1976d2'
+  roundRectPath(ctx, dismiss.x, dismiss.y, dismiss.w, dismiss.h, BTN_RADIUS)
+  ctx.fill()
+  ctx.fillStyle = '#fff'
+  ctx.fillText('知道了', dismiss.x + dismiss.w / 2, dismiss.y + dismiss.h / 2)
+
   ctx.restore()
 }
 

@@ -8,8 +8,8 @@ export interface InputHandlers {
   onDragStart: (offsetX: number, offsetY: number) => void
   /** 拖拽结束 */
   onDragEnd: () => void
-  /** 快速点击（非拖拽） */
-  onClick: () => void
+  /** 快速点击（非拖拽），参数为窗口内坐标 */
+  onClick: (x: number, y: number) => void
   /** 鼠标活动（用于唤醒睡眠） */
   onActivity: () => void
 }
@@ -67,7 +67,7 @@ export function bindInput (
     }
   }
 
-  function handleUp (pointerId: number | null): void {
+  function handleUp (pointerId: number | null, clientX: number, clientY: number): void {
     if (!down) return
     down = false
     if (pointerId !== null) {
@@ -86,7 +86,7 @@ export function bindInput (
     }
 
     if (performance.now() - downTime < CLICK_MAX_MS) {
-      handlers.onClick()
+      handlers.onClick(clientX, clientY)
     }
   }
 
@@ -104,8 +104,8 @@ export function bindInput (
     handleDown(e.clientX, e.clientY, e.pointerId)
   })
   canvas.addEventListener('pointermove', (e) => handleMove(e.clientX, e.clientY))
-  canvas.addEventListener('pointerup', (e) => handleUp(e.pointerId))
-  canvas.addEventListener('pointercancel', (e) => handleUp(e.pointerId))
+  canvas.addEventListener('pointerup', (e) => handleUp(e.pointerId, e.clientX, e.clientY))
+  canvas.addEventListener('pointercancel', (e) => handleUp(e.pointerId, e.clientX, e.clientY))
 
   // ---- 鼠标事件兜底通道 ----
   canvas.addEventListener('mousedown', (e) => {
@@ -116,9 +116,9 @@ export function bindInput (
     if (!down || pointerCaptureActive()) return
     handleMove(e.clientX, e.clientY)
   })
-  window.addEventListener('mouseup', () => {
+  window.addEventListener('mouseup', (e) => {
     if (!down || pointerCaptureActive()) return
-    handleUp(null)
+    handleUp(null, e.clientX, e.clientY)
   })
 
   return {

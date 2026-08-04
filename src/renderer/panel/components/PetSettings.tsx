@@ -54,12 +54,57 @@ export default function PetSettings ({ config, onChange }: Props): React.JSX.Ele
           control={
             <Switch
               size="small"
+              checked={config.clickThrough}
+              onChange={(e) => onChange({ clickThrough: e.target.checked })}
+            />
+          }
+          label="鼠标穿透（纯观赏，不挡操作）"
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              size="small"
+              checked={config.reminderSound}
+              onChange={(e) => onChange({ reminderSound: e.target.checked })}
+            />
+          }
+          label="提醒提示音"
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              size="small"
               checked={config.showOnStartup}
               onChange={(e) => onChange({ showOnStartup: e.target.checked })}
             />
           }
           label="启动时显示"
         />
+        <FormControlLabel
+          control={
+            <Switch
+              size="small"
+              checked={config.autoStart}
+              onChange={(e) => onChange({ autoStart: e.target.checked })}
+            />
+          }
+          label="开机自启动"
+        />
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Typography variant="body2" sx={{ minWidth: 64 }}>
+            宠物大小
+          </Typography>
+          <Slider
+            size="small"
+            min={0.5}
+            max={2}
+            step={0.1}
+            value={config.petScale}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(v) => `${v}×`}
+            onChange={(_e, v) => onChange({ petScale: v as number })}
+          />
+        </Stack>
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="body2" sx={{ minWidth: 64 }}>
             移动速度
@@ -73,6 +118,21 @@ export default function PetSettings ({ config, onChange }: Props): React.JSX.Ele
             valueLabelDisplay="auto"
             valueLabelFormat={(v) => `${v}×`}
             onChange={(_e, v) => onChange({ speed: v as number })}
+          />
+        </Stack>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Typography variant="body2" sx={{ minWidth: 64 }}>
+            气泡时长
+          </Typography>
+          <Slider
+            size="small"
+            min={0}
+            max={30}
+            step={1}
+            value={config.bubbleDuration}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(v) => (v === 0 ? '常驻' : `${v}s`)}
+            onChange={(_e, v) => onChange({ bubbleDuration: v as number })}
           />
         </Stack>
         <Stack direction="row" spacing={2} alignItems="center">

@@ -1,8 +1,8 @@
 import { app, globalShortcut } from 'electron'
-import { loadConfig } from './config-store'
+import { getConfig, loadConfig } from './config-store'
 import { startCursorPoll, stopCursorPoll } from './cursor'
 import { registerDragHandlers } from './drag'
-import { registerIpc } from './ipc'
+import { applyAutoStart, registerIpc } from './ipc'
 import { fireReminder } from './reminders/notifier'
 import { ReminderScheduler } from './reminders/scheduler'
 import { ReminderStore } from './reminders/store'
@@ -15,6 +15,13 @@ if (!gotLock) {
   app.exit(0)
 }
 
+// 防御：父进程管道断开（如终端/IDE 关闭）时 stdout 写入会抛 EPIPE，
+// 不处理会弹「main process 错误」对话框
+process.on('uncaughtException', (err) => {
+  if ((err as NodeJS.ErrnoException).code === 'EPIPE') return
+  throw err
+})
+
 const reminderStore = new ReminderStore()
 const scheduler = new ReminderScheduler(reminderStore, fireReminder)
 
@@ -23,6 +30,7 @@ app.whenReady().then(() => {
 
   registerIpc(reminderStore)
   registerDragHandlers()
+  applyAutoStart(getConfig().autoStart)
 
   // 宠物是主角：启动即创建（可见性由 showOnStartup 决定）
   createPetWindow()

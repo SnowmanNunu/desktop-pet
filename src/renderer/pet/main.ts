@@ -1,27 +1,35 @@
 import { DEFAULT_PET_CONFIG, type PetConfig } from '../../shared/types'
-import { drawBubble, drawReactionText, drawSleepZzz } from './bubble'
+import {
+  drawReactionText,
+  drawReminderBubble,
+  drawSleepZzz,
+  pointInRect,
+  reminderBubbleLayout
+} from './bubble'
 import { bindInput } from './input'
+import { fallbackBounds } from './motion'
 import { PetStateMachine } from './states'
 import { SpritePlayer } from './sprite'
 
-/** 逻辑画布尺寸（CSS 像素），与主进程宠物窗口尺寸一致 */
-const LOGICAL_SIZE = 220
-/** 提醒气泡展示时长（秒） */
-const REMINDER_BUBBLE_SEC = 8
 /** 反应文字展示时长（秒） */
 const REACTION_SEC = 1
+/** 稍后提醒的分钟数 */
+const SNOOZE_MINUTES = 10
 
 const canvas = document.getElementById('petCanvas') as HTMLCanvasElement
 const ctx = canvas.getContext('2d')!
 
 let config: PetConfig = { ...DEFAULT_PET_CONFIG }
+/** 画布边长（CSS 像素），跟随窗口大小（petScale） */
+let viewSize = Math.min(window.innerWidth, window.innerHeight)
+
 const player = new SpritePlayer()
-const machine = new PetStateMachine(config, LOGICAL_SIZE, (x, y) => {
+const machine = new PetStateMachine(config, viewSize, (x, y) => {
   window.petApi.setPosition(x, y)
 })
 
 // 提醒气泡
-let reminderText: string | null = null
+let reminder: { title: string; sticky: boolean } | null = null
 let reminderTimer = 0
 // 反应文字
 let reactionText: string | null = null
@@ -33,12 +41,14 @@ let mouseActiveTimer: ReturnType<typeof setTimeout> | null = null
 let sleepPhase = 0
 
 function resize (): void {
+  viewSize = Math.min(window.innerWidth, window.innerHeight)
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
-  canvas.width = Math.floor(LOGICAL_SIZE * dpr)
-  canvas.height = Math.floor(LOGICAL_SIZE * dpr)
-  canvas.style.width = `${LOGICAL_SIZE}px`
-  canvas.style.height = `${LOGICAL_SIZE}px`
+  canvas.width = Math.floor(viewSize * dpr)
+  canvas.height = Math.floor(viewSize * dpr)
+  canvas.style.width = `${viewSize}px`
+  canvas.style.height = `${viewSize}px`
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  machine.setViewSize(viewSize)
 }
 
 function markMouseActive (): void {
@@ -49,6 +59,43 @@ function markMouseActive (): void {
   }, 800)
 }
 
+/** 提醒提示音：两声短促的“汪汪”式提示（WebAudio 合成，无需音频素材） */
+let audioCtx: AudioContext | null = null
+
+async function playReminderSound (): Promise<void> {
+  try {
+    if (!audioCtx || audioCtx.state === 'closed') {
+      audioCtx = new AudioContext()
+    }
+    const actx = audioCtx
+    // 自动播放策略下上下文可能处于 suspended，必须等 resume 完成再排程
+    if (actx.state === 'suspended') {
+      await actx.resume()
+    }
+    if (actx.state !== 'running') {
+      console.warn('[pet] AudioContext 未就绪:', actx.state)
+      return
+    }
+    const start = actx.currentTime + 0.05
+    ;[880, 660].forEach((freq, i) => {
+      const osc = actx.createOscillator()
+      const gain = actx.createGain()
+      osc.type = 'triangle'
+      osc.frequency.value = freq
+      const t = start + i * 0.18
+      gain.gain.setValueAtTime(0.0001, t)
+      gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.16)
+      osc.connect(gain).connect(actx.destination)
+      osc.start(t)
+      osc.stop(t + 0.18)
+    })
+    console.log('[pet] 提示音已播放, state =', actx.state)
+  } catch (err) {
+    console.warn('[pet] 提示音播放失败', err)
+  }
+}
+
 async function init (): Promise<void> {
   resize()
   window.addEventListener('resize', resize)
@@ -56,8 +103,9 @@ async function init (): Promise<void> {
   await player.load()
 
   // 初始位置：屏幕右下角
-  machine.winX = Math.max(0, window.screen.availWidth - LOGICAL_SIZE - 60)
-  machine.winY = Math.max(0, window.screen.availHeight - LOGICAL_SIZE - 80)
+  const bounds = fallbackBounds()
+  machine.winX = Math.max(bounds.x, bounds.x + bounds.width - viewSize - 60)
+  machine.winY = Math.max(bounds.y, bounds.y + bounds.height - viewSize - 80)
   window.petApi.setPosition(machine.winX, machine.winY)
 
   machine.setState(
@@ -73,10 +121,11 @@ async function init (): Promise<void> {
     machine.updateConfig(config)
   })
 
-  window.petApi.onReminder(({ title }) => {
-    reminderText = title
+  window.petApi.onReminder(({ title, sticky }) => {
+    reminder = { title, sticky }
     reminderTimer = 0
     machine.triggerReminder()
+    if (config.reminderSound) void playReminderSound()
   })
 
   const input = bindInput(canvas, {
@@ -88,11 +137,19 @@ async function init (): Promise<void> {
       window.petApi.endDrag()
       machine.setState('idle')
     },
-    onClick: () => {
-      // 点击提醒气泡立即关闭
-      if (reminderText) {
-        reminderText = null
-        return
+    onClick: (x, y) => {
+      // 提醒气泡显示中：优先处理气泡按钮
+      if (reminder) {
+        const layout = reminderBubbleLayout(ctx, reminder.title, viewSize)
+        if (pointInRect(x, y, layout.snooze)) {
+          window.petApi.snoozeReminder(reminder.title, SNOOZE_MINUTES)
+          reminder = null
+          return
+        }
+        if (pointInRect(x, y, layout.dismiss) || pointInRect(x, y, layout.bubble)) {
+          reminder = null
+          return
+        }
       }
       if (config.clickFeedback) {
         reactionText = machine.triggerClickReaction()
@@ -107,9 +164,10 @@ async function init (): Promise<void> {
     const deltaSec = Math.min((now - lastTime) / 1000, 0.05)
     lastTime = now
 
-    const cursor = window.petApi.getCursorScreenPoint()
+    const cursorInfo = window.petApi.getCursorInfo()
     machine.update(deltaSec, {
-      cursor: config.followMouse ? cursor : null,
+      cursor: config.followMouse ? cursorInfo : null,
+      bounds: cursorInfo?.bounds ?? fallbackBounds(),
       mouseActive,
       mouseDown: input.isMouseDown()
     })
@@ -118,15 +176,15 @@ async function init (): Promise<void> {
     player.update(deltaSec)
 
     // ---- 绘制 ----
-    ctx.clearRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE)
+    ctx.clearRect(0, 0, viewSize, viewSize)
     ctx.save()
     ctx.translate(0, machine.jumpY)
-    player.draw(ctx, LOGICAL_SIZE, machine.facing === -1)
+    player.draw(ctx, viewSize, machine.facing === -1)
     ctx.restore()
 
     if (machine.state === 'sleep') {
       sleepPhase += deltaSec
-      drawSleepZzz(ctx, LOGICAL_SIZE, sleepPhase)
+      drawSleepZzz(ctx, viewSize, sleepPhase)
     }
 
     if (reactionText) {
@@ -134,16 +192,19 @@ async function init (): Promise<void> {
       if (reactionTimer > REACTION_SEC) {
         reactionText = null
       } else {
-        drawReactionText(ctx, reactionText, LOGICAL_SIZE, reactionTimer / REACTION_SEC)
+        drawReactionText(ctx, reactionText, viewSize, reactionTimer / REACTION_SEC)
       }
     }
 
-    if (reminderText) {
+    if (reminder) {
       reminderTimer += deltaSec
-      if (reminderTimer > REMINDER_BUBBLE_SEC) {
-        reminderText = null
+      // sticky（重要提醒）或 bubbleDuration=0：不自动消失，需点击确认
+      const autoDismiss =
+        !reminder.sticky && config.bubbleDuration > 0 && reminderTimer > config.bubbleDuration
+      if (autoDismiss) {
+        reminder = null
       } else {
-        drawBubble(ctx, reminderText, LOGICAL_SIZE)
+        drawReminderBubble(ctx, reminderBubbleLayout(ctx, reminder.title, viewSize), viewSize)
       }
     }
 

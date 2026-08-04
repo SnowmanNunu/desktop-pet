@@ -64,6 +64,7 @@ src/renderer/public/sprites/
 
 - 帧图命名 `000.png, 001.png…`，透明底，建议 ≤ 512×512
 - 未提供素材的状态自动回退到 `idle`
+- 批量生成的形象/帧数/prompt 规范见 [docs/sprite-spec.md](docs/sprite-spec.md)
 
 ### 素材处理管线
 

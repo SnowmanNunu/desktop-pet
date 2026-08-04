@@ -84,16 +84,17 @@ export function createPetWindow (): void {
   if (petWindow && !petWindow.isDestroyed()) return
 
   const config = getConfig()
+  const winSize = Math.round(PET_WINDOW_SIZE * config.petScale)
   const primaryDisplay = screen.getPrimaryDisplay()
-  const { x, y, width, height } = primaryDisplay.bounds
-  const startX = x + width - PET_WINDOW_SIZE - 60
-  const startY = y + height - PET_WINDOW_SIZE - 80
+  const { x, y, width, height } = primaryDisplay.workArea
+  const startX = x + width - winSize - 60
+  const startY = y + height - winSize - 80
 
   petWindow = new BrowserWindow({
     x: startX,
     y: startY,
-    width: PET_WINDOW_SIZE,
-    height: PET_WINDOW_SIZE,
+    width: winSize,
+    height: winSize,
     show: config.showOnStartup,
     frame: false,
     transparent: true,
@@ -111,7 +112,9 @@ export function createPetWindow (): void {
       preload: path.join(import.meta.dirname, '../preload/pet.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      // 提醒提示音：宠物窗口无用户手势也允许播放音频
+      autoplayPolicy: 'no-user-gesture-required'
     }
   })
 
@@ -123,12 +126,24 @@ export function createPetWindow (): void {
       petWindow.show()
     }
     petWindow.setAlwaysOnTop(true)
+    if (config.clickThrough) {
+      petWindow.setIgnoreMouseEvents(true, { forward: true })
+    }
     petWindow.webContents.send(IPC.petConfig, getConfig())
   })
 
   petWindow.on('closed', () => {
     petWindow = null
     notifyPetStatus()
+  })
+
+  // 宠物窗口的 console 转发到主进程日志（无窗口的环境下便于排查）
+  petWindow.webContents.on('console-message', (details) => {
+    const msg =
+      typeof details === 'object' && details !== null && 'message' in details
+        ? (details as { message: string }).message
+        : String(details)
+    console.log('[pet]', msg)
   })
 
   notifyPetStatus()
@@ -148,6 +163,28 @@ export function showPetWindow (): void {
 
 export function hidePetWindow (): void {
   getPetWindow()?.hide()
+}
+
+/** 调整宠物大小：以窗口中心为锚点缩放 */
+export function applyPetScale (scale: number): void {
+  const win = getPetWindow()
+  if (!win) return
+  const newSize = Math.round(PET_WINDOW_SIZE * scale)
+  const [x, y, w] = [win.getBounds().x, win.getBounds().y, win.getBounds().width]
+  win.setBounds({
+    x: Math.round(x + w / 2 - newSize / 2),
+    y: Math.round(y + w / 2 - newSize / 2),
+    width: newSize,
+    height: newSize
+  })
+}
+
+/** 鼠标穿透：开启后宠物不响应任何交互（纯观赏） */
+export function applyClickThrough (enabled: boolean): void {
+  const win = getPetWindow()
+  if (!win) return
+  // forward: true 让窗口仍能收到 mousemove（不影响全局光标跟随）
+  win.setIgnoreMouseEvents(enabled, { forward: true })
 }
 
 function notifyPetStatus (): void {

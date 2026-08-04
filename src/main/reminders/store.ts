@@ -26,6 +26,16 @@ export class ReminderStore {
     } catch {
       this.reminders = []
     }
+    // 清理 transient 任务（稍后提醒等内部任务）：已触发的、或一次性但已过期的
+    const now = Date.now()
+    const before = this.reminders.length
+    this.reminders = this.reminders.filter(
+      (r) =>
+        !r.transient ||
+        (r.enabled &&
+          !(r.type === 'once' && r.datetime && Date.parse(r.datetime) < now))
+    )
+    if (this.reminders.length !== before) this.persist()
     return this.reminders
   }
 

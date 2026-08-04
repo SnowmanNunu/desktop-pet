@@ -1,5 +1,7 @@
 import AddIcon from '@mui/icons-material/Add'
 import Button from '@mui/material/Button'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Select from '@mui/material/Select'
@@ -30,6 +32,7 @@ export default function ReminderEditor ({ onAdd }: Props): React.JSX.Element {
   const [datetime, setDatetime] = useState(defaultDatetime)
   const [weekdays, setWeekdays] = useState<number[]>([1, 2, 3, 4, 5])
   const [intervalMinutes, setIntervalMinutes] = useState(45)
+  const [sticky, setSticky] = useState(false)
 
   const valid =
     title.trim().length > 0 &&
@@ -38,7 +41,7 @@ export default function ReminderEditor ({ onAdd }: Props): React.JSX.Element {
 
   function handleAdd (): void {
     if (!valid) return
-    const base = { title: title.trim(), enabled: true, lastFiredAt: null }
+    const base = { title: title.trim(), enabled: true, lastFiredAt: null, sticky }
     switch (type) {
       case 'once':
         onAdd({ ...base, type, datetime })
@@ -54,6 +57,7 @@ export default function ReminderEditor ({ onAdd }: Props): React.JSX.Element {
         break
     }
     setTitle('')
+    setSticky(false)
   }
 
   return (
@@ -130,6 +134,17 @@ export default function ReminderEditor ({ onAdd }: Props): React.JSX.Element {
             ))}
           </ToggleButtonGroup>
         )}
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              size="small"
+              checked={sticky}
+              onChange={(e) => setSticky(e.target.checked)}
+            />
+          }
+          label="重要提醒（气泡常驻，需点击确认）"
+        />
 
         <Button
           variant="contained"

@@ -25,6 +25,17 @@ const panelApi = {
   importLegacyTasks: (reminders: Reminder[]): Promise<Reminder[]> =>
     ipcRenderer.invoke(IPC.importLegacyTasks, reminders),
 
+  // 检查更新 / 打开链接
+  checkUpdates: (): Promise<{
+    current: string
+    latest: string | null
+    url: string | null
+    hasUpdate: boolean
+    error?: string
+  }> => ipcRenderer.invoke(IPC.checkUpdates),
+  openExternal: (url: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.openExternal, url),
+
   // 事件
   onPetStatus: (callback: (running: boolean) => void): void => {
     ipcRenderer.on(IPC.petStatus, (_event, running: boolean) => callback(running))

@@ -1,5 +1,5 @@
-import type { PetConfig, PetState, ScreenPoint } from '../../shared/types'
-import { clampToScreen, randomTarget, stepToward } from './motion'
+import type { PetConfig, PetState, ScreenBounds, ScreenPoint } from '../../shared/types'
+import { clampToBounds, fallbackBounds, randomTarget, stepToward } from './motion'
 
 /** 行走基础速度（像素/秒），乘以配置的 speed 倍率 */
 const WALK_SPEED = 90
@@ -11,6 +11,8 @@ const REMIND_DURATION = 3
 export interface MachineEnv {
   /** 全局光标位置（主进程轮询提供），无则 null */
   cursor: ScreenPoint | null
+  /** 光标所在显示器的工作区（多显示器适配） */
+  bounds: ScreenBounds
   /** 鼠标最近在宠物上有活动（用于唤醒睡眠） */
   mouseActive: boolean
   /** 鼠标当前按住 */
@@ -32,21 +34,30 @@ export class PetStateMachine {
   facing = 1
   /** 点击反馈循环索引（跳 → 叫 → 坐） */
   reactionIndex = 0
+  /** 窗口（画布）边长，随 petScale 变化 */
+  viewSize: number
 
   private targetX: number | null = null
   private targetY: number | null = null
   private jumpVelocity = 0
   private barkTimer = 0
   private nextStateChange = 2 + Math.random() * 3
+  private bounds: ScreenBounds = fallbackBounds()
 
   /** 跳跃的垂直偏移（供渲染层使用） */
   jumpY = 0
 
   constructor (
     private config: PetConfig,
-    private logicalSize: number,
+    viewSize: number,
     private moveWindow: (x: number, y: number) => void
-  ) {}
+  ) {
+    this.viewSize = viewSize
+  }
+
+  setViewSize (viewSize: number): void {
+    this.viewSize = viewSize
+  }
 
   updateConfig (config: PetConfig): void {
     const prevDefault = this.config.defaultState
@@ -113,6 +124,7 @@ export class PetStateMachine {
 
   update (deltaSec: number, env: MachineEnv): void {
     this.stateTime += deltaSec
+    this.bounds = env.bounds
 
     // 跳跃重力（jump 与 remind 共用）
     if (this.state === 'jump' || this.state === 'remind') {
@@ -149,13 +161,13 @@ export class PetStateMachine {
 
     // 跟随鼠标（使用全局光标）
     if (this.config.followMouse && env.cursor) {
-      const centerX = this.winX + this.logicalSize / 2
-      const centerY = this.winY + this.logicalSize / 2
+      const centerX = this.winX + this.viewSize / 2
+      const centerY = this.winY + this.viewSize / 2
       const dist = Math.hypot(env.cursor.x - centerX, env.cursor.y - centerY)
 
       if (dist > FOLLOW_DISTANCE) {
-        this.targetX = env.cursor.x - this.logicalSize / 2
-        this.targetY = env.cursor.y - this.logicalSize / 2
+        this.targetX = env.cursor.x - this.viewSize / 2
+        this.targetY = env.cursor.y - this.viewSize / 2
         if (this.state !== 'walk') this.setState('walk')
         this.moveTowardTarget(deltaSec)
         return
@@ -172,7 +184,7 @@ export class PetStateMachine {
 
     if (this.state === 'look') {
       if (env.cursor) {
-        this.facing = env.cursor.x > this.winX + this.logicalSize / 2 ? 1 : -1
+        this.facing = env.cursor.x > this.winX + this.viewSize / 2 ? 1 : -1
       }
       if (this.stateTime > 3) this.setState('idle')
       return
@@ -196,7 +208,7 @@ export class PetStateMachine {
     } else if (r < 0.45) {
       this.setState('sit')
     } else if (r < 0.75) {
-      const target = randomTarget(this.logicalSize)
+      const target = randomTarget(this.viewSize, this.bounds)
       this.targetX = target.x
       this.targetY = target.y
       this.setState('walk')
@@ -211,7 +223,7 @@ export class PetStateMachine {
       this.setState('idle')
       return
     }
-    const target = clampToScreen(this.targetX, this.targetY, this.logicalSize)
+    const target = clampToBounds(this.targetX, this.targetY, this.viewSize, this.bounds)
     this.targetX = target.x
     this.targetY = target.y
 

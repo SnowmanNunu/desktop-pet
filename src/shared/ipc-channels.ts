@@ -17,6 +17,11 @@ export const IPC = {
   deleteReminder: 'delete-reminder',
   // 旧版 localStorage 数据迁移
   importLegacyTasks: 'import-legacy-tasks',
+  // 稍后提醒（snooze）
+  snoozeReminder: 'snooze-reminder',
+  // 检查更新 / 打开链接
+  checkUpdates: 'check-updates',
+  openExternal: 'open-external',
 
   // 宠物窗口 → 主进程（send）
   movePetWindow: 'move-pet-window',

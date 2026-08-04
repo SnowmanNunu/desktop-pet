@@ -18,6 +18,14 @@ export default function App (): React.JSX.Element {
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [petRunning, setPetRunning] = useState(false)
   const [legacyCount, setLegacyCount] = useState(0)
+  const [updateInfo, setUpdateInfo] = useState<{
+    current: string
+    latest: string | null
+    url: string | null
+    hasUpdate: boolean
+    error?: string
+  } | null>(null)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
 
   useEffect(() => {
     window.panelApi.getConfig().then(setConfig)
@@ -53,6 +61,14 @@ export default function App (): React.JSX.Element {
     })
   }, [])
 
+  const handleCheckUpdates = useCallback(() => {
+    setCheckingUpdate(true)
+    window.panelApi
+      .checkUpdates()
+      .then(setUpdateInfo)
+      .finally(() => setCheckingUpdate(false))
+  }, [])
+
   return (
     <Box sx={{ p: 2 }}>
       <Stack spacing={2}>
@@ -83,7 +99,38 @@ export default function App (): React.JSX.Element {
           >
             隐藏宠物
           </Button>
+          <Button
+            size="small"
+            variant="text"
+            disabled={checkingUpdate}
+            onClick={handleCheckUpdates}
+          >
+            {checkingUpdate ? '检查中…' : '检查更新'}
+          </Button>
         </Stack>
+
+        {updateInfo && (
+          <Alert
+            severity={updateInfo.error ? 'warning' : updateInfo.hasUpdate ? 'info' : 'success'}
+            onClose={() => setUpdateInfo(null)}
+            action={
+              updateInfo.hasUpdate && updateInfo.url ? (
+                <Button
+                  size="small"
+                  onClick={() => window.panelApi.openExternal(updateInfo.url!)}
+                >
+                  去下载
+                </Button>
+              ) : undefined
+            }
+          >
+            {updateInfo.error
+              ? updateInfo.error
+              : updateInfo.hasUpdate
+                ? `发现新版本 ${updateInfo.latest}（当前 v${updateInfo.current}）`
+                : `已是最新版本（v${updateInfo.current}）`}
+          </Alert>
+        )}
 
         {legacyCount > 0 && (
           <Alert
