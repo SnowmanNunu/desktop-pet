@@ -19,21 +19,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Install root dependencies
-        run: npm install
-
-      - name: Build plugin
-        run: npm run build
-
-      - name: Install standalone dependencies
-        working-directory: ./standalone
+      - name: Install dependencies
         run: npm install
 
       - name: Build Windows portable
-        working-directory: ./standalone
-        run: npx electron-builder --win
+        run: npm run dist:win
         env:
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
 
@@ -41,7 +33,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: standalone/release/*.exe
+          path: release/*.exe
 
   build-macos:
     runs-on: macos-latest
@@ -52,21 +44,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Install root dependencies
-        run: npm install
-
-      - name: Build plugin
-        run: npm run build
-
-      - name: Install standalone dependencies
-        working-directory: ./standalone
+      - name: Install dependencies
         run: npm install
 
       - name: Build macOS dmg
-        working-directory: ./standalone
-        run: npx electron-builder --mac
+        run: npm run dist:mac
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
@@ -75,7 +59,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: standalone/release/*.dmg
+          path: release/*.dmg
 
   build-linux:
     runs-on: ubuntu-latest
@@ -86,26 +70,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y icnsutils graphicsmagick
-
-      - name: Install root dependencies
-        run: npm install
-
-      - name: Build plugin
-        run: npm run build
-
-      - name: Install standalone dependencies
-        working-directory: ./standalone
+      - name: Install dependencies
         run: npm install
 
       - name: Build Linux AppImage
-        working-directory: ./standalone
-        run: npx electron-builder --linux
+        run: npm run dist:linux
         env:
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
 
@@ -113,7 +84,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: standalone/release/*.AppImage
+          path: release/*.AppImage
 
   release:
     needs: [build-windows, build-macos, build-linux]
@@ -130,48 +101,33 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: 桌面哈士奇 ${{ github.ref_name }}
+          name: 旺财桌面宠物 ${{ github.ref_name }}
           body: |
-            ## 🎉 桌面哈士奇 ${{ github.ref_name }}
+            ## 🎉 旺财桌面宠物 ${{ github.ref_name }}
 
-            一只会走会闹的桌面哈士奇宠物。
-
-            ---
-
-            ### ✨ 更新内容
-
-            详见 [CHANGELOG](../CHANGELOG.md) 或下方版本说明。
+            一只会定时提醒、有表情动作的桌面二哈。
 
             ---
 
             ### 📥 下载地址
 
             #### Windows
-            - **便携版（推荐）**：`husky-desktop-${{ github.ref_name }}-x64.exe` — 双击即可运行，无需安装
+            - **便携版（推荐）**：`.exe` — 双击即可运行，无需安装
 
             #### macOS
-            - **DMG 安装包**：`husky-desktop-${{ github.ref_name }}-arm64.dmg`
+            - **DMG 安装包**：打开后将应用拖入 Applications
 
             #### Linux
-            - **AppImage**：`husky-desktop-${{ github.ref_name }}-x64.AppImage` — 赋予执行权限后双击运行
-
-            ---
-
-            ### 🚀 快速开始
-
-            1. 根据你的系统下载对应版本
-            2. Windows：直接双击 `.exe` 运行
-            3. macOS：打开 `.dmg`，将应用拖入 Applications
-            4. Linux：`chmod +x *.AppImage` 后双击运行
+            - **AppImage**：`chmod +x *.AppImage` 后双击运行
 
             ---
 
             ### 📝 说明
 
-            - 独立桌面版无需安装 uTools
             - 宠物窗口为透明小窗口，不影响桌面操作
             - 按住宠物可拖到屏幕任意位置
             - 任务栏托盘图标 + `Ctrl+Shift+S` 快捷键可随时呼出控制面板
+            - 定时提醒在应用运行时后台触发（宠物动画 + 气泡 + 系统通知）
           files: |
             artifacts/windows/*
             artifacts/macos/*

@@ -1,9 +1,7 @@
 node_modules/
 dist/
-standalone/node_modules/
-standalone/dist/
-standalone/public/
-standalone/release/
+out/
+release/
 *.exe
 
 .DS_Store
@@ -18,3 +16,8 @@ husky.log
 
 .env
 .env.*
+
+# Python 虚拟环境（rembg 去底工具）
+tools/.venv/
+# rembg 模型缓存
+.u2net/

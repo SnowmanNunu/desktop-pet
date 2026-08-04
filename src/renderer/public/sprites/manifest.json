@@ -1,0 +1,67 @@
+{
+  "states": {
+    "idle": {
+      "frames": [
+        "idle/000.png"
+      ],
+      "fps": 2,
+      "loop": true
+    },
+    "walk": {
+      "frames": [
+        "walk/000.png"
+      ],
+      "fps": 8,
+      "loop": true
+    },
+    "sit": {
+      "frames": [
+        "sit/000.png"
+      ],
+      "fps": 2,
+      "loop": true
+    },
+    "happy": {
+      "frames": [
+        "happy/000.png"
+      ],
+      "fps": 6,
+      "loop": true
+    },
+    "sleep": {
+      "frames": [
+        "idle/000.png"
+      ],
+      "fps": 2,
+      "loop": true
+    },
+    "jump": {
+      "frames": [
+        "happy/000.png"
+      ],
+      "fps": 8,
+      "loop": false
+    },
+    "bark": {
+      "frames": [
+        "happy/000.png"
+      ],
+      "fps": 8,
+      "loop": false
+    },
+    "remind": {
+      "frames": [
+        "happy/000.png"
+      ],
+      "fps": 8,
+      "loop": true
+    },
+    "drag": {
+      "frames": [
+        "idle/000.png"
+      ],
+      "fps": 2,
+      "loop": true
+    }
+  }
+}

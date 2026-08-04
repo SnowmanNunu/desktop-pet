@@ -1,34 +1,63 @@
 {
-  "private": true,
   "name": "desktop-pet",
-  "version": "1.0.0",
-  "description": "桌面哈士奇 — 会走会闹的桌面宠物",
+  "version": "2.0.0",
+  "private": true,
+  "description": "旺财桌面宠物 — 会定时提醒、有表情动作的桌面二哈",
+  "type": "module",
+  "main": "./out/main/index.js",
+  "overrides": {
+    "@noble/hashes": "1.8.0"
+  },
   "scripts": {
-    "dev": "webpack -w --mode development",
-    "build": "webpack --mode production"
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "prepare:sprites": "node tools/prepare-sprites.mjs",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:linux": "npm run build && electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.snowman.desktop-pet",
+    "productName": "旺财桌面宠物",
+    "files": [
+      "out/**",
+      "resources/**"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "category": "public.app-category.entertainment",
+      "icon": "resources/logo.png"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "resources/logo.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "resources/logo.png"
+    }
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^7.1.1",
-    "@mui/material": "^7.3.5",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "@mui/icons-material": "^7.3.11",
+    "@mui/material": "^7.3.11",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@babel/cli": "^7.28.3",
-    "@babel/core": "^7.28.4",
-    "@babel/preset-env": "^7.28.3",
-    "@babel/preset-react": "^7.27.1",
-    "babel-loader": "^10.0.0",
-    "copy-webpack-plugin": "^13.0.1",
-    "css-loader": "^7.1.2",
-    "less": "^4.4.2",
-    "less-loader": "^12.3.0",
-    "png-to-ico": "^3.0.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^41.7.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^3.1.0",
     "sharp": "^0.34.5",
-    "style-loader": "^4.0.0",
-    "webpack": "^5.102.1",
-    "webpack-cli": "^6.0.1"
+    "typescript": "~5.9",
+    "vite": "^6.4.3"
   }
 }
