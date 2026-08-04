@@ -16,8 +16,8 @@ interface Props {
 export default function PetSettings ({ config, onChange }: Props): React.JSX.Element {
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
-      <Typography variant="subtitle2" gutterBottom>
-        宠物设置
+      <Typography variant="subtitle2" gutterBottom fontWeight={700}>
+        🐺 宠物设置
       </Typography>
       <Stack spacing={1}>
         <FormControlLabel

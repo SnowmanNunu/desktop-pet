@@ -101,9 +101,9 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: 旺财桌面宠物 ${{ github.ref_name }}
+          name: 哈士奇桌面宠物 ${{ github.ref_name }}
           body: |
-            ## 🎉 旺财桌面宠物 ${{ github.ref_name }}
+            ## 🎉 哈士奇桌面宠物 ${{ github.ref_name }}
 
             一只会定时提醒、有表情动作的桌面二哈。
 

@@ -41,7 +41,7 @@ export function createPanelWindow (): void {
     resizable: true,
     minWidth: 360,
     minHeight: 600,
-    title: '旺财桌面宠物',
+    title: '哈士奇桌面宠物',
     icon: path.join(import.meta.dirname, '../../resources/logo.png'),
     webPreferences: {
       preload: path.join(import.meta.dirname, '../preload/panel.mjs'),

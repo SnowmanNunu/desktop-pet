@@ -62,8 +62,8 @@ export default function ReminderEditor ({ onAdd }: Props): React.JSX.Element {
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
-      <Typography variant="subtitle2" gutterBottom>
-        添加提醒
+      <Typography variant="subtitle2" gutterBottom fontWeight={700}>
+        ⏰ 添加提醒
       </Typography>
       <Stack spacing={1.5}>
         <TextField

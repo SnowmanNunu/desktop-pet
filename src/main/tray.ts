@@ -15,14 +15,14 @@ export function createTray (): void {
   }
 
   const menu = Menu.buildFromTemplate([
-    { label: '🐺 旺财桌面宠物', enabled: false },
+    { label: '🐺 哈士奇桌面宠物', enabled: false },
     { type: 'separator' },
     { label: '打开控制面板', click: () => createPanelWindow() },
     { type: 'separator' },
     { label: '退出', click: () => app.exit(0) }
   ])
 
-  tray.setToolTip('旺财桌面宠物')
+  tray.setToolTip('哈士奇桌面宠物')
   tray.setContextMenu(menu)
   tray.on('click', () => createPanelWindow())
 }

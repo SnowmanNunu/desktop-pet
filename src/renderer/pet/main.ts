@@ -206,7 +206,8 @@ async function init (): Promise<void> {
       ? 'sleep'
       : config.defaultState === 'sit'
         ? 'sit'
-        : 'idle'
+        : 'idle',
+    config.defaultState !== 'idle'
   )
 
   window.petApi.onReminder(({ title, sticky }) => {
@@ -222,9 +223,8 @@ async function init (): Promise<void> {
     window.petApi.showContextMenu()
   })
   window.petApi.onCommand((cmd) => {
-    if (cmd === 'sit' || cmd === 'sleep') {
-      machine.setState(cmd)
-    }
+    if (cmd === 'sit') machine.setState('sit', true)
+    else if (cmd === 'sleep') machine.setState('sleep', true)
   })
 
   // 页面隐藏前强制保存位置

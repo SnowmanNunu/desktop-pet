@@ -63,17 +63,27 @@ export class PetStateMachine {
     const prevDefault = this.config.defaultState
     this.config = config
     if (config.defaultState !== prevDefault) {
-      this.setState(config.defaultState === 'sleep' ? 'sleep' : config.defaultState === 'sit' ? 'sit' : 'idle')
+      if (config.defaultState === 'sleep') this.setState('sleep', true)
+      else if (config.defaultState === 'sit') this.setState('sit', true)
+      else this.setState('idle')
     }
   }
 
-  setState (state: PetState): void {
+  /**
+   * 切换状态。
+   * persistentRest：主动安排的休息（默认状态=坐下/睡觉、右键菜单指令），
+   * 一直保持到被点击或提醒触发；自主的坐/睡则是几秒后自动结束的小憩。
+   */
+  private persistentRest = false
+
+  setState (state: PetState, persistentRest = false): void {
     if (this.state !== state) {
       this.state = state
     }
     this.stateTime = 0
     this.jumpY = 0
     this.barkTimer = 0
+    this.persistentRest = (state === 'sleep' || state === 'sit') && persistentRest
 
     if (state === 'idle') {
       this.nextStateChange = 2 + Math.random() * 3
@@ -148,7 +158,8 @@ export class PetStateMachine {
       return
     }
 
-    if (this.state === 'sleep' && env.mouseActive) {
+    // 小憩（非主动安排的睡眠）被鼠标活动唤醒
+    if (this.state === 'sleep' && !this.persistentRest && env.mouseActive) {
       this.setState('idle')
       return
     }
@@ -191,7 +202,10 @@ export class PetStateMachine {
     }
 
     if (this.state === 'sit' || this.state === 'sleep') {
-      if (this.stateTime > this.nextStateChange) this.setState('idle')
+      // 主动安排的休息不超时，直到被点击或提醒唤醒
+      if (!this.persistentRest && this.stateTime > this.nextStateChange) {
+        this.setState('idle')
+      }
       return
     }
 

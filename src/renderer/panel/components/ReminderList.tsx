@@ -1,4 +1,5 @@
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
@@ -6,8 +7,33 @@ import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import type { Reminder } from '../../../shared/types'
+import type { Reminder, ReminderType } from '../../../shared/types'
 import { reminderTimeLabel, reminderTypeLabel } from '../api'
+
+/** 提醒类型配色 */
+const TYPE_COLORS: Record<ReminderType, string> = {
+  once: '#8b5cf6',
+  daily: '#0ea5e9',
+  weekly: '#10b981',
+  interval: '#f59e0b'
+}
+
+function TypeChip ({ reminder }: { reminder: Reminder }): React.JSX.Element {
+  const color = TYPE_COLORS[reminder.type]
+  return (
+    <Chip
+      size="small"
+      label={reminderTypeLabel(reminder)}
+      sx={{
+        bgcolor: `${color}1f`,
+        color,
+        fontWeight: 700,
+        fontSize: 11,
+        height: 20
+      }}
+    />
+  )
+}
 
 interface Props {
   reminders: Reminder[]
@@ -26,8 +52,8 @@ export default function ReminderList ({
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
-      <Typography variant="subtitle2" gutterBottom>
-        提醒列表（{visible.length}）
+      <Typography variant="subtitle2" gutterBottom fontWeight={700}>
+        📋 提醒列表（{visible.length}）
       </Typography>
       <List dense disablePadding>
         {visible.map((reminder) => (
@@ -60,11 +86,27 @@ export default function ReminderList ({
               >
                 {reminder.title}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {reminderTypeLabel(reminder)}
-                {reminderTimeLabel(reminder) ? ` · ${reminderTimeLabel(reminder)}` : ''}
-                {reminder.sticky ? ' · 重要' : ''}
-              </Typography>
+              <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.25 }}>
+                <TypeChip reminder={reminder} />
+                {reminder.sticky === true && (
+                  <Chip
+                    size="small"
+                    label="重要"
+                    sx={{
+                      bgcolor: '#ef44441f',
+                      color: '#ef4444',
+                      fontWeight: 700,
+                      fontSize: 11,
+                      height: 20
+                    }}
+                  />
+                )}
+                {reminderTimeLabel(reminder) && (
+                  <Typography variant="caption" color="text.secondary">
+                    {reminderTimeLabel(reminder)}
+                  </Typography>
+                )}
+              </Stack>
             </Stack>
           </ListItem>
         ))}

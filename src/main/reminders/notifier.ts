@@ -29,7 +29,7 @@ export function fireReminder (reminder: Reminder): void {
 
   if (Notification.isSupported()) {
     const notification = new Notification({
-      title: '🐺 旺财提醒',
+      title: '🐺 哈士奇提醒',
       body: reminder.title,
       silent: false
     })

@@ -1,15 +1,15 @@
 /**
  * Canvas 气泡绘制：提醒气泡（标题 + 稍后/知道了按钮）、反应文字、睡眠 Zzz
+ * 所有尺寸随窗口大小（boxSize）自适应缩放，宠物缩小时气泡不溢出
  */
 
-const PADDING_X = 10
-const PADDING_Y = 6
-const LINE_HEIGHT = 16
-const MAX_WIDTH = 180
-const TAIL = 6
-const BTN_HEIGHT = 20
-const BTN_GAP = 6
-const BTN_RADIUS = 6
+/** 设计基准窗口尺寸 */
+const BASE_SIZE = 220
+
+/** 气泡缩放系数（相对基准尺寸，限制在 0.6 ~ 1.5） */
+function bubbleScale (boxSize: number): number {
+  return Math.min(Math.max(boxSize / BASE_SIZE, 0.6), 1.5)
+}
 
 export interface Rect {
   x: number
@@ -23,6 +23,14 @@ export interface BubbleLayout {
   snooze: Rect
   dismiss: Rect
   lines: string[]
+  /** 缩放后的绘制参数 */
+  font: string
+  btnFont: string
+  padX: number
+  padY: number
+  lineHeight: number
+  tail: number
+  btnRadius: number
 }
 
 function roundRectPath (
@@ -72,25 +80,42 @@ export function reminderBubbleLayout (
   text: string,
   boxSize: number
 ): BubbleLayout {
+  const s = bubbleScale(boxSize)
+  const padX = 10 * s
+  const padY = 6 * s
+  const lineHeight = 16 * s
+  const maxWidth = Math.min(180 * s, boxSize - 4)
+  const btnHeight = 20 * s
+  const btnGap = 6 * s
+  const font = `${Math.round(13 * s)}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`
+  const btnFont = `${Math.round(11 * s)}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`
+
   ctx.save()
-  ctx.font = '13px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif'
-  const lines = wrapText(ctx, text, MAX_WIDTH - PADDING_X * 2).slice(0, 4)
+  ctx.font = font
+  const lines = wrapText(ctx, text, maxWidth - padX * 2).slice(0, 4)
   const textWidth = Math.max(...lines.map((l) => ctx.measureText(l).width))
   ctx.restore()
 
-  const w = Math.min(Math.max(textWidth + PADDING_X * 2, 150), MAX_WIDTH)
-  const textH = lines.length * LINE_HEIGHT
-  const h = PADDING_Y * 2 + textH + BTN_GAP + BTN_HEIGHT
+  const w = Math.min(Math.max(textWidth + padX * 2, 150 * s), maxWidth)
+  const textH = lines.length * lineHeight
+  const h = padY * 2 + textH + btnGap + btnHeight
   const x = Math.max(2, Math.min((boxSize - w) / 2, boxSize - w - 2))
   const y = 4
 
-  const btnW = (w - PADDING_X * 2 - BTN_GAP) / 2
-  const btnY = y + PADDING_Y + textH + BTN_GAP
+  const btnW = (w - padX * 2 - btnGap) / 2
+  const btnY = y + padY + textH + btnGap
   return {
     bubble: { x, y, w, h },
-    snooze: { x: x + PADDING_X, y: btnY, w: btnW, h: BTN_HEIGHT },
-    dismiss: { x: x + PADDING_X + btnW + BTN_GAP, y: btnY, w: btnW, h: BTN_HEIGHT },
-    lines
+    snooze: { x: x + padX, y: btnY, w: btnW, h: btnHeight },
+    dismiss: { x: x + padX + btnW + btnGap, y: btnY, w: btnW, h: btnHeight },
+    lines,
+    font,
+    btnFont,
+    padX,
+    padY,
+    lineHeight,
+    tail: 6 * s,
+    btnRadius: 6 * s
   }
 }
 
@@ -114,34 +139,34 @@ export function drawReminderBubble (
   // 小尾巴
   const tailX = boxSize / 2
   ctx.beginPath()
-  ctx.moveTo(tailX - TAIL, bubble.y + bubble.h - 1)
-  ctx.lineTo(tailX, bubble.y + bubble.h + TAIL)
-  ctx.lineTo(tailX + TAIL, bubble.y + bubble.h - 1)
+  ctx.moveTo(tailX - layout.tail, bubble.y + bubble.h - 1)
+  ctx.lineTo(tailX, bubble.y + bubble.h + layout.tail)
+  ctx.lineTo(tailX + layout.tail, bubble.y + bubble.h - 1)
   ctx.closePath()
   ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
   ctx.fill()
 
   // 标题文字
-  ctx.font = '13px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif'
+  ctx.font = layout.font
   ctx.fillStyle = '#222'
   ctx.textBaseline = 'top'
   lines.forEach((line, i) => {
-    ctx.fillText(line, bubble.x + PADDING_X, bubble.y + PADDING_Y + i * LINE_HEIGHT)
+    ctx.fillText(line, bubble.x + layout.padX, bubble.y + layout.padY + i * layout.lineHeight)
   })
 
   // 按钮
-  ctx.font = '11px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif'
+  ctx.font = layout.btnFont
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
 
   ctx.fillStyle = 'rgba(0, 0, 0, 0.06)'
-  roundRectPath(ctx, snooze.x, snooze.y, snooze.w, snooze.h, BTN_RADIUS)
+  roundRectPath(ctx, snooze.x, snooze.y, snooze.w, snooze.h, layout.btnRadius)
   ctx.fill()
   ctx.fillStyle = '#555'
   ctx.fillText('10分钟后再提', snooze.x + snooze.w / 2, snooze.y + snooze.h / 2)
 
   ctx.fillStyle = '#1976d2'
-  roundRectPath(ctx, dismiss.x, dismiss.y, dismiss.w, dismiss.h, BTN_RADIUS)
+  roundRectPath(ctx, dismiss.x, dismiss.y, dismiss.w, dismiss.h, layout.btnRadius)
   ctx.fill()
   ctx.fillStyle = '#fff'
   ctx.fillText('知道了', dismiss.x + dismiss.w / 2, dismiss.y + dismiss.h / 2)

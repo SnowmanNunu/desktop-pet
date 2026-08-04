@@ -10,7 +10,38 @@ function Root (): React.JSX.Element {
   const theme = React.useMemo(
     () =>
       createTheme({
-        palette: { mode: prefersDark ? 'dark' : 'light' }
+        palette: {
+          mode: prefersDark ? 'dark' : 'light',
+          primary: { main: '#6366f1' }, // 靛蓝
+          secondary: { main: '#f59e0b' }, // 琥珀
+          info: { main: '#0ea5e9' },
+          success: { main: '#10b981' },
+          background: prefersDark
+            ? { default: '#0f172a', paper: '#1e293b' }
+            : { default: '#eef0fa', paper: '#ffffff' }
+        },
+        shape: { borderRadius: 12 },
+        typography: {
+          fontFamily:
+            '-apple-system, "PingFang SC", "Microsoft YaHei", sans-serif'
+        },
+        components: {
+          MuiPaper: {
+            styleOverrides: {
+              root: { backgroundImage: 'none' }
+            }
+          },
+          MuiButton: {
+            styleOverrides: {
+              root: { textTransform: 'none', fontWeight: 600 }
+            }
+          },
+          MuiChip: {
+            styleOverrides: {
+              root: { fontWeight: 600 }
+            }
+          }
+        }
       }),
     [prefersDark]
   )

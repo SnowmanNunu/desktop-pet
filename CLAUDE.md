@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-旺财桌面宠物 is a desktop husky pet app (v2.0, refactored from the v1.x uTools+Electron dual-target project). Electron-only, built with electron-vite + TypeScript. The pet is rendered from AI-generated sprite frame sequences (not procedural drawing). Timed reminders are scheduled in the main process and survive panel close / app restart.
+哈士奇桌面宠物 is a desktop husky pet app (v2.0, refactored from the v1.x uTools+Electron dual-target project). Electron-only, built with electron-vite + TypeScript. The pet is rendered from AI-generated sprite frame sequences (not procedural drawing). Timed reminders are scheduled in the main process and survive panel close / app restart.
 
 ## Common commands
 
