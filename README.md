@@ -16,6 +16,11 @@
 
 ## 🚀 快速开始
 
+### 前置要求
+
+- Node.js ≥ 18（建议 20+）
+- Python 3（可选，仅素材去底需要）
+
 ### 开发
 
 ```bash
@@ -38,6 +43,15 @@ npm run dist:linux # 打包 Linux AppImage
 npm run typecheck
 ```
 
+### 提交代码（双远端）
+
+仓库同时托管在 GitHub 与 Gitee：
+
+```bash
+git push origin master   # Gitee
+git push github master   # GitHub
+```
+
 ## 🎨 宠物素材
 
 宠物使用**序列帧素材**，按状态组织：
@@ -58,10 +72,15 @@ src/renderer/public/sprites/
 ```bash
 # 可选：安装 rembg 获得更好的去底效果（隔离在虚拟环境中）
 python3 -m venv tools/.venv
-tools/.venv/bin/pip install 'rembg[cli]'
+tools/.venv/bin/pip install rembg onnxruntime
 
 npm run prepare:sprites   # 去底 → 裁边 → 统一尺寸 → 生成 manifest.json
 ```
+
+> 说明：
+> - 请安装 `rembg` 本体而非 `rembg[cli]`——cli extra 依赖的 gradio 在部分环境（如 Python 3.9）有兼容问题；脚本通过 `tools/remove_bg.py` 直接调用 rembg 库 API
+> - rembg 首次运行会自动下载 u2net 模型（约 176MB）到 `~/.u2net/`
+> - 未安装 rembg 时回退为 sharp 纯色裁边，无法处理渐变背景
 
 ## 📁 项目结构
 
@@ -88,6 +107,12 @@ desktop-pet/
 - **控制面板**：React 19 + MUI 7
 - **宠物渲染**：原生 Canvas 2D 序列帧播放器（无图形库）
 - **打包**：electron-builder
+
+### 依赖版本说明（`npm install` 默认装最新版会踩坑，已锁定）
+
+- `@mui/material` / `@mui/icons-material` 锁定 **v7**（v9 的类型定义与面板代码不兼容）
+- `typescript` 锁定 **~5.9**（TS 7 为原生编译器重写版，生态兼容性不足）
+- `@noble/hashes` 通过 `overrides` 锁定 **1.8.0**（v2 为纯 ESM，electron-builder 的 CJS 代码无法 require）
 
 ## ⚠️ 从 v1.x 升级
 
