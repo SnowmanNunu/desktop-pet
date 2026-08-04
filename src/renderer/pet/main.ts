@@ -9,12 +9,76 @@ import {
 import { bindInput } from './input'
 import { fallbackBounds } from './motion'
 import { PetStateMachine } from './states'
-import { SpritePlayer } from './sprite'
+import { SpritePlayer, type SpriteFx } from './sprite'
 
 /** 反应文字展示时长（秒） */
 const REACTION_SEC = 1
 /** 稍后提醒的分钟数 */
 const SNOOZE_MINUTES = 10
+/** 宠物位置记忆（localStorage） */
+const POSITION_KEY = 'pet-position'
+/** 睡觉时的渲染帧间隔（秒），省电 */
+const SLEEP_FRAME_INTERVAL = 0.1
+
+const TAU = Math.PI * 2
+
+/** 各状态的程序化动效（正式多帧素材就位后仍保留，叠加在帧动画上） */
+function computeFx (state: string, phase: number): SpriteFx {
+  switch (state) {
+    case 'idle':
+      // 呼吸
+      return { scaleY: 1 + 0.025 * Math.sin((TAU * phase) / 2.2) }
+    case 'look':
+      return { scaleY: 1 + 0.02 * Math.sin((TAU * phase) / 2.2) }
+    case 'sit':
+      return { scaleY: 1 + 0.018 * Math.sin((TAU * phase) / 2.6) }
+    case 'sleep':
+      // 更缓慢的呼吸
+      return { scaleY: 1 + 0.02 * Math.sin((TAU * phase) / 3.4) }
+    case 'walk': {
+      // 拟人步伐：身体前倾 + 左右摇摆（鸭子步）+ 挤压拉伸模拟腿部发力
+      const step = Math.sin((TAU * phase) / 0.45)
+      return {
+        offsetY: -Math.abs(step) * 5,
+        rotationDeg: step * 6 + 4,
+        scaleX: 1 + 0.04 * Math.cos((TAU * phase) / 0.45),
+        scaleY: 1 - 0.02 * Math.cos((TAU * phase) / 0.45)
+      }
+    }
+    case 'drag':
+      // 被拎着摇晃
+      return { rotationDeg: Math.sin((TAU * phase) / 0.9) * 8 }
+    case 'remind':
+      // 兴奋弹跳
+      return { scaleY: 1 + 0.06 * Math.abs(Math.sin((TAU * phase) / 0.6)) }
+    case 'happy':
+    case 'bark':
+      return { scaleY: 1 + 0.04 * Math.abs(Math.sin((TAU * phase) / 0.5)) }
+    default:
+      return {}
+  }
+}
+
+function loadSavedPosition (bounds: { x: number; y: number; width: number; height: number }, size: number): { x: number; y: number } | null {
+  try {
+    const raw = localStorage.getItem(POSITION_KEY)
+    if (!raw) return null
+    const pos = JSON.parse(raw)
+    if (typeof pos.x !== 'number' || typeof pos.y !== 'number') return null
+    // 校验在当前屏幕范围内，避免换显示器后宠物丢到屏幕外
+    if (
+      pos.x < bounds.x - size / 2 ||
+      pos.y < bounds.y ||
+      pos.x > bounds.x + bounds.width - size / 2 ||
+      pos.y > bounds.y + bounds.height - size / 2
+    ) {
+      return null
+    }
+    return pos
+  } catch {
+    return null
+  }
+}
 
 const canvas = document.getElementById('petCanvas') as HTMLCanvasElement
 const ctx = canvas.getContext('2d')!
@@ -24,8 +88,22 @@ let config: PetConfig = { ...DEFAULT_PET_CONFIG }
 let viewSize = Math.min(window.innerWidth, window.innerHeight)
 
 const player = new SpritePlayer()
+// 位置记忆：moveWindow 回调里节流保存
+let lastPosSave = 0
+function savePosition (x: number, y: number, force = false): void {
+  const now = Date.now()
+  if (!force && now - lastPosSave < 2000) return
+  lastPosSave = now
+  try {
+    localStorage.setItem(POSITION_KEY, JSON.stringify({ x, y }))
+  } catch {
+    // ignore
+  }
+}
+
 const machine = new PetStateMachine(config, viewSize, (x, y) => {
   window.petApi.setPosition(x, y)
+  savePosition(x, y)
 })
 
 // 提醒气泡
@@ -116,10 +194,11 @@ async function init (): Promise<void> {
 
   await player.load()
 
-  // 初始位置：屏幕右下角
+  // 初始位置：优先上次保存的位置（校验在屏幕内），否则右下角
   const bounds = fallbackBounds()
-  machine.winX = Math.max(bounds.x, bounds.x + bounds.width - viewSize - 60)
-  machine.winY = Math.max(bounds.y, bounds.y + bounds.height - viewSize - 80)
+  const saved = loadSavedPosition(bounds, viewSize)
+  machine.winX = saved?.x ?? Math.max(bounds.x, bounds.x + bounds.width - viewSize - 60)
+  machine.winY = saved?.y ?? Math.max(bounds.y, bounds.y + bounds.height - viewSize - 80)
   window.petApi.setPosition(machine.winX, machine.winY)
 
   machine.setState(
@@ -137,6 +216,22 @@ async function init (): Promise<void> {
     if (config.reminderSound) void playReminderSound()
   })
 
+  // 右键菜单（主进程弹出系统菜单）
+  canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault()
+    window.petApi.showContextMenu()
+  })
+  window.petApi.onCommand((cmd) => {
+    if (cmd === 'sit' || cmd === 'sleep') {
+      machine.setState(cmd)
+    }
+  })
+
+  // 页面隐藏前强制保存位置
+  window.addEventListener('pagehide', () => {
+    savePosition(machine.winX, machine.winY, true)
+  })
+
   const input = bindInput(canvas, {
     onDragStart: (offsetX, offsetY) => {
       machine.startDrag()
@@ -144,6 +239,7 @@ async function init (): Promise<void> {
     },
     onDragEnd: () => {
       window.petApi.endDrag()
+      savePosition(machine.winX, machine.winY, true)
       machine.setState('idle')
     },
     onClick: (x, y) => {
@@ -169,9 +265,22 @@ async function init (): Promise<void> {
   })
 
   let lastTime = performance.now()
+  let fxPhase = 0
+  // 省电：睡觉时节流到 ~10fps（累计满间隔才做一次更新+绘制）
+  let sleepFrameAcc = 0
   function animate (now: number): void {
-    const deltaSec = Math.min((now - lastTime) / 1000, 0.05)
+    const rawDelta = Math.min((now - lastTime) / 1000, 0.05)
     lastTime = now
+
+    // 睡眠节流：跳过中间帧，但保留时间累计
+    if (machine.state === 'sleep' && sleepFrameAcc < SLEEP_FRAME_INTERVAL) {
+      sleepFrameAcc += rawDelta
+      requestAnimationFrame(animate)
+      return
+    }
+    const deltaSec = machine.state === 'sleep' ? sleepFrameAcc : rawDelta
+    sleepFrameAcc = 0
+    fxPhase += deltaSec
 
     const cursorInfo = window.petApi.getCursorInfo()
     machine.update(deltaSec, {
@@ -188,7 +297,7 @@ async function init (): Promise<void> {
     ctx.clearRect(0, 0, viewSize, viewSize)
     ctx.save()
     ctx.translate(0, machine.jumpY)
-    player.draw(ctx, viewSize, machine.facing === -1)
+    player.draw(ctx, viewSize, machine.facing === -1, computeFx(machine.state, fxPhase))
     ctx.restore()
 
     if (machine.state === 'sleep') {

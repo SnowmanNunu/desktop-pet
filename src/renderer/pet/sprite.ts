@@ -9,6 +9,14 @@ interface ResolvedEntry {
   images: HTMLImageElement[]
 }
 
+/** 程序化动效参数（以宠物底部中心为锚点应用） */
+export interface SpriteFx {
+  scaleX?: number
+  scaleY?: number
+  rotationDeg?: number
+  offsetY?: number
+}
+
 /**
  * 序列帧播放器
  * 素材规范：sprites/<state>/000.png… 透明底帧图，manifest.json 声明 fps / loop
@@ -86,30 +94,29 @@ export class SpritePlayer {
     }
   }
 
-  /** 底部对齐、等比缩放绘制；flip 水平翻转（用于朝向） */
+  /** 底部对齐、等比缩放绘制；flip 水平翻转（朝向）；fx 程序化动效（呼吸/颠簸/摇晃） */
   draw (
     ctx: CanvasRenderingContext2D,
     boxSize: number,
-    flip: boolean
+    flip: boolean,
+    fx: SpriteFx = {}
   ): void {
     const resolved = this.resolve(this.state)
     if (!resolved) return
     const img = resolved.images[Math.min(this.frameIndex, resolved.images.length - 1)]
 
-    const scale = Math.min(boxSize / img.width, boxSize / img.height)
-    const w = img.width * scale
-    const h = img.height * scale
-    const x = (boxSize - w) / 2
-    const y = boxSize - h
+    const fit = Math.min(boxSize / img.width, boxSize / img.height)
+    const w = img.width * fit
+    const h = img.height * fit
 
     ctx.save()
-    if (flip) {
-      ctx.translate(boxSize, 0)
-      ctx.scale(-1, 1)
-      ctx.drawImage(img, boxSize - x - w, y, w, h)
-    } else {
-      ctx.drawImage(img, x, y, w, h)
+    // 锚点：宠物底部中心
+    ctx.translate(boxSize / 2, boxSize + (fx.offsetY ?? 0))
+    if (fx.rotationDeg) {
+      ctx.rotate((fx.rotationDeg * Math.PI) / 180)
     }
+    ctx.scale((fx.scaleX ?? 1) * (flip ? -1 : 1), fx.scaleY ?? 1)
+    ctx.drawImage(img, -w / 2, -h, w, h)
     ctx.restore()
   }
 }

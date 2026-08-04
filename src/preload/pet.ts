@@ -34,6 +34,14 @@ const petApi = {
   snoozeReminder: (title: string, minutes: number): void => {
     ipcRenderer.invoke(IPC.snoozeReminder, title, minutes)
   },
+  /** 请求主进程弹出右键菜单 */
+  showContextMenu: (): void => {
+    ipcRenderer.send(IPC.petContextMenu)
+  },
+  /** 监听主进程发来的指令（右键菜单动作等） */
+  onCommand: (callback: (cmd: 'sit' | 'sleep') => void): void => {
+    ipcRenderer.on(IPC.petCommand, (_event, cmd: 'sit' | 'sleep') => callback(cmd))
+  },
   /** 监听配置更新 */
   onConfig: (callback: (config: PetConfig) => void): void => {
     ipcRenderer.on(IPC.petConfig, (_event, config: PetConfig) => callback(config))

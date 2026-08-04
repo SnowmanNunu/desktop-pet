@@ -27,11 +27,13 @@ export const IPC = {
   movePetWindow: 'move-pet-window',
   startPetDrag: 'start-pet-drag',
   endPetDrag: 'end-pet-drag',
+  petContextMenu: 'pet-context-menu',
 
   // 主进程 → 宠物窗口
   petConfig: 'pet-config',
   cursorPosition: 'cursor-position',
   reminderFired: 'reminder-fired',
+  petCommand: 'pet-command',
 
   // 主进程 → 面板
   petStatus: 'pet-status',

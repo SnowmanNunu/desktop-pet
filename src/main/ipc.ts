@@ -1,4 +1,4 @@
-import { app, ipcMain, shell } from 'electron'
+import { app, ipcMain, Menu, shell } from 'electron'
 import type { PetConfig, Reminder } from '../shared/types'
 import { IPC } from '../shared/ipc-channels'
 import { getConfig, updateConfig } from './config-store'
@@ -7,6 +7,7 @@ import { checkForUpdates } from './updates'
 import {
   applyClickThrough,
   applyPetScale,
+  createPanelWindow,
   createPetWindow,
   getPanelWindow,
   getPetWindow,
@@ -101,6 +102,24 @@ export function registerIpc (reminderStore: ReminderStore): void {
 
   ipcMain.handle(IPC.openExternal, (_event, url: string) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url)
+  })
+
+  // ---- 宠物右键菜单 ----
+  ipcMain.on(IPC.petContextMenu, () => {
+    const pet = getPetWindow()
+    if (!pet) return
+    const sendCommand = (cmd: 'sit' | 'sleep'): void => {
+      pet.webContents.send(IPC.petCommand, cmd)
+    }
+    Menu.buildFromTemplate([
+      { label: '坐一下', click: () => sendCommand('sit') },
+      { label: '去睡觉', click: () => sendCommand('sleep') },
+      { type: 'separator' },
+      { label: '隐藏宠物', click: () => hidePetWindow() },
+      { label: '打开控制面板', click: () => createPanelWindow() },
+      { type: 'separator' },
+      { label: '退出', click: () => app.exit(0) }
+    ]).popup({ window: pet })
   })
 
   // 任务变化时同步给面板（面板可能打开着）

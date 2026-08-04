@@ -155,6 +155,9 @@ export default function ReminderEditor ({ onAdd }: Props): React.JSX.Element {
         >
           添加
         </Button>
+        <Typography variant="caption" color="text.secondary">
+          提示：macOS 若收不到系统通知，请在「系统设置 → 通知」中允许本应用
+        </Typography>
       </Stack>
     </Paper>
   )
